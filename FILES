@@ -1,0 +1,6 @@
+rescue64 - Stable Kernel
+altker64 - Alternate Kernel
+initram.igz - initramfs that contains the /lib/modules for the 64 kernels
+isolinux.cfg - bootloader config with '+ ZFS' in the heading
+sysrcd.dat - System Rescue CD root filesystem
+sysrcd.md5 - System Rescue CD root filesystem md5 checksum
