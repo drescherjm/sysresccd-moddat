@@ -202,6 +202,12 @@ mkdir lib/modules
 cp -r /lib/modules/${1}/ lib/modules
 cp -r /lib/modules/${2}/ lib/modules
 
+# Delete old firmware files for wireless cards
+rm -rf lib/firmware
+
+# Copy the firmware files for wireless cards
+cp -r ${R}/squashfs-root/lib/firmware/ lib/firmware
+
 # Remake the initramfs
 ewarn "Creating the new initram.igz. Please wait a moment since this is a single-threaded operation!"
 find . | cpio -H newc -o | xz --check=crc32 --x86 --lzma2 > ${H}/initram-new.igz

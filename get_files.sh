@@ -10,6 +10,13 @@ if [ -z ${1} ]; then
 	echo "Please pass the iso to this script. Example: ./get_files.sh /root/sysrcd.iso" && exit
 fi
 
+if [ ! -d "/tmp/iso" ]; then
+	mkdir /tmp/iso
+else
+	rm -rf /tmp/iso
+	mkdir /tmp/iso
+fi
+
 echo "Mounting"
 mount -o loop,ro ${1} /tmp/iso
 
