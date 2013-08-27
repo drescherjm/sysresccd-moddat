@@ -1,9 +1,0 @@
-How to use these scripts?
-
-1. Compile your rescue/alt kernels, and compile the spl and zfs modules (On Gentoo/Funtoo: emerge -1 spl zfs-kmod)
-2. Run the 'get_files.sh' script and pass the path to your system rescue cd iso
-3. Run the 'create.sh' script and pass the <rescue64> <altker64> modules directory name (Not the path, but just the name: Example: 3.9.10-alt371-amd64)
-4. Take the files in the 'out' directory and replace the files in their respective locations with an iso editor. I use 'ISO Master'.
-
-You will also need to have bliss-initramfs installed since it uses the initramfs that the application creates as a base for the files needed to be merged into
-the system rescue cd's root filesystem (sysrcd.dat).
