@@ -18,6 +18,7 @@ R="${H}/extract"
 IR="${H}/initram"
 OUT="${H}/out"
 T="/tmp/iso-${RANDOM}"
+KTYPE="2"	# 1 = Stable Kernel, 2 = Alternate Kernel
 
 # Utility Functions
 
@@ -205,7 +206,7 @@ chroot squashfs-root /bin/bash -l -c "depmod ${1}" 2> /dev/null
 
 # Merge zfs-srm folder with this folder
 einfo "Installing zfs userspace applications and files into the sysresccd rootfs..."
-rsync -a ${SRM}/ squashfs-root/
+rsync -av ${SRM}/ squashfs-root/
 
 einfo "Remaking the squashfs..."
 mksquashfs squashfs-root/ ${H}/sysrcd-new.dat
@@ -250,7 +251,11 @@ mv sysrcd-new.dat sysrcd.dat && md5sum sysrcd.dat > sysrcd.md5
 mv initram-new.igz initram.igz
 mv isolinux-new.cfg isolinux.cfg
 
-cp /usr/src/linux-${1}/arch/x86_64/boot/bzImage rescue64
+if [[ ${KTYPE} -eq 1 ]]; then
+	cp /usr/src/linux-${1}/arch/x86_64/boot/bzImage rescue64
+elif [[ ${KTYPE} -eq 2 ]]; then
+	cp /usr/src/linux-${1}/arch/x86_64/boot/bzImage altker64
+fi
 
 clean
 
