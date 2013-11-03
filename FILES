@@ -1,4 +1,4 @@
-rescue64 - stable kernel
+rescue64/altker64 - stable/alternate kernel
 initram.igz - initramfs that contains the /lib/modules, /lib/firmware for the stable 64 bit kernel.
 isolinux.cfg - bootloader config with '+ ZFS' in the heading
 sysrcd.dat - sysresccd root filesystem
