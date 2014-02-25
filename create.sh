@@ -159,7 +159,7 @@ fi
 # =========
 
 # Generate a bliss-initramfs and extract it in the zfs-srm directory
-cd ${BIC} && ./createInit 1 ${1} && mv initrd-${1} ${SRM} && cd ${SRM}
+cd ${BIC} && ./mkinitrd 1 ${1} && mv initrd-${1} ${SRM} && cd ${SRM}
 mv initrd-${1} initrd.gz && cat initrd.gz | gzip -d | cpio -id && rm initrd.gz
 
 # ===========
@@ -172,8 +172,10 @@ einfo "Removing unnecessary files from bliss-initramfs and configuring it for sy
 rm -rf bin dev proc sys etc/DIR_COLORS etc/mtab etc/bash init libraries mnt usr/bin lib/modules
 rm sbin/{depmod,insmod,kmod,lsmod,modinfo,modprobe,rmmod}
 
-# Move udev files into place (Matching sysresccd layout)
-mv lib64/udev lib/
+# Copy udev files from live system
+mkdir -p lib/udev/rules.d
+cp /lib64/udev/rules.d/{60-zvol,69-vdev,90-zfs}.rules lib/udev/rules.d
+cp /lib64/udev/{vdev,zvol}_id lib/udev
 
 # Perform some substitions so that udev uses the correct udev_id file (Needed for making swap zvol - /dev/zvol/<pool name>/<swap dataset name>)
 sed -i -e 's:/lib64/:/lib/:' lib/udev/rules.d/69-vdev.rules
@@ -237,9 +239,21 @@ find . | cpio -H newc -o | xz --check=crc32 --x86 --lzma2 > ${H}/initram-new.igz
 
 einfo "Editing the isolinux.cfg and adding '+ ZFS' to the title"
 
-# get version and then substitute with + ZFS
+# Add "+ ZFS" after the version in the title to distinguish
+# it from original disks
 SRV="$(cat ${H}/isolinux-ori.cfg | grep SYSTEM-RESCUE-CD | cut -d " " -f 4)"
-cat ${H}/isolinux-ori.cfg | sed -e "s/${SRV}/${SRV} + ZFS/" > ${H}/isolinux-new.cfg
+sed "s/${SRV}/${SRV} + ZFS/" ${H}/isolinux-ori.cfg > ${H}/isolinux-new.cfg
+
+# Adding default root password of "funtoo" to all default options
+sed -i "35s/\
+APPEND rescue64 scandelay=1 -- rescue32 scandelay=1/\
+APPEND rescue64 scandelay=1 rootpass=root -- rescue32 \
+scandelay=1 rootpass=root/" ${H}/isolinux-new.cfg
+
+sed -i "190iAPPEND rootpass=root" ${H}/isolinux-new.cfg
+sed -i "287iAPPEND rootpass=root" ${H}/isolinux-new.cfg
+sed -i "384iAPPEND rootpass=root" ${H}/isolinux-new.cfg
+sed -i "481iAPPEND rootpass=root" ${H}/isolinux-new.cfg
 
 einfo "Renaming other files and making sure all necessary files are in the out/ directory ..."
 
