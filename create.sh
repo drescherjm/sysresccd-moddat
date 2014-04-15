@@ -1,13 +1,21 @@
 #!/bin/bash
 
-# Copyright (C) 2013 Jonathan Vasquez <jvasquez1011@gmail.com>
+# Copyright 2014 Jonathan Vasquez <jvasquez1011@gmail.com>
 #
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#	http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Instructions:
-# ./create.sh <rescue64> <path_to_iso>
+# ./create.sh <rescue64> <altker64> <path_to_iso>
 
 # Your files will be located in the out/ directory.
 
@@ -18,7 +26,6 @@ R="${H}/extract"
 IR="${H}/initram"
 OUT="${H}/out"
 T="/tmp/iso-${RANDOM}"
-KTYPE="2"	# 1 = Stable Kernel, 2 = Alternate Kernel
 
 # Utility Functions
 
@@ -74,10 +81,8 @@ clean()
 
 # ============================================================
 
-if [ -z "${1}" ]; then
-	die "./create.sh <rescue64> <path_to_iso>. Example: ./create.sh 3.4.52-std371-amd64 /root/sysresccd.iso"
-elif [ -z "${2}" ]; then
-	die "./create.sh <rescue64> <path_to_iso>. Example: ./create.sh 3.4.52-std371-amd64 /root/sysresccd.iso"
+if [[ $# != 3 ]] ; then
+	die "./create.sh <rescue64> <altker64> <path_to_iso>. Example: ./create.sh 3.10.32-std410-amd64 3.13.5-std410-amd64 /root/sysresccd.iso"
 fi
 
 # We will make sure we are home (We are already home though since H = pwd)
@@ -95,7 +100,7 @@ fi
 einfo "Mounting..."
 
 modprobe loop || die "Failed to load the 'loop' module. Make sure you have loop support in your kernel."
-mount -o ro,loop ${2} ${T}
+mount -o ro,loop ${3} ${T}
 
 einfo "Copying required files..."
 
@@ -119,12 +124,24 @@ if [ ! -d "/usr/src/linux-${1}" ]; then
 	die "The kernel directory: /usr/src/linux-${1} doesn't exist."
 fi
 
+if [ ! -d "/usr/src/linux-${2}" ]; then
+	die "The kernel directory: /usr/src/linux-${2} doesn't exist."
+fi
+
 # Check to see if the kernel modules directory exists
 if [ ! -d "/lib64/modules/${1}" ]; then
 	die "The kernel modules directory: /lib64/modules/${1} doesn't exist."
 else
 	if [ ! -d "/lib64/modules/${1}/extra" ]; then
 		die "The kernel modules directory for spl/zfs: /lib64/modules/${1}/extra doesn't exist. Please compile your spl and zfs modules before running the application."
+	fi
+fi
+
+if [ ! -d "/lib64/modules/${2}" ]; then
+	die "The kernel modules directory: /lib64/modules/${2} doesn't exist."
+else
+	if [ ! -d "/lib64/modules/${2}/extra" ]; then
+		die "The kernel modules directory for spl/zfs: /lib64/modules/${2}/extra doesn't exist. Please compile your spl and zfs modules before running the application."
 	fi
 fi
 
@@ -159,6 +176,7 @@ fi
 # =========
 
 # Generate a bliss-initramfs and extract it in the zfs-srm directory
+
 cd ${BIC} && ./mkinitrd 1 ${1} && mv initrd-${1} ${SRM} && cd ${SRM}
 mv initrd-${1} initrd.gz && cat initrd.gz | gzip -d | cpio -id && rm initrd.gz
 
@@ -169,7 +187,7 @@ mv initrd-${1} initrd.gz && cat initrd.gz | gzip -d | cpio -id && rm initrd.gz
 einfo "Removing unnecessary files from bliss-initramfs and configuring it for sysresccd use..."
 
 # Remove unncessary directories
-rm -rf bin dev proc sys etc/DIR_COLORS etc/mtab etc/bash init libraries mnt usr/bin lib/modules
+rm -rf bin dev proc sys etc/DIR_COLORS etc/hostid etc/zfs/zpool.cache etc/mtab etc/bash init libraries mnt usr/bin lib/modules
 rm sbin/{depmod,insmod,kmod,lsmod,modinfo,modprobe,rmmod}
 
 # Copy udev files from live system
@@ -197,14 +215,17 @@ einfo "Removing old kernel modules and copying new ones..."
 
 # Remove the old sysresccd 64 bit kernel modules since we will be replacing them
 rm -rf squashfs-root/lib64/modules/${1}
+rm -rf squashfs-root/lib64/modules/${2}
 
 # Copy the spl/zfs modules into the squashfs image (sysresccd rootfs)
 cp -r /lib64/modules/${1} squashfs-root/lib64/modules/
+cp -r /lib64/modules/${2} squashfs-root/lib64/modules/
 
 einfo "Regenerating module dependencies from within the sysresccd rootfs..."
 
 # Regenerate module dependencies for the kernel from within the sysresccd rootfs
 chroot squashfs-root /bin/bash -l -c "depmod ${1}" 2> /dev/null
+chroot squashfs-root /bin/bash -l -c "depmod ${2}" 2> /dev/null
 
 # Merge zfs-srm folder with this folder
 einfo "Installing zfs userspace applications and files into the sysresccd rootfs..."
@@ -221,7 +242,9 @@ einfo "Extracting the sysresccd initramfs and installing our modules into it..."
 cd ${IR} && cat ${H}/initram-ori.igz | xz -d | cpio -id
 
 # Copy the kernel modules to the /lib/modules directory.
-mkdir lib/modules && cp -r ${R}/squashfs-root/lib64/modules/${1} lib/modules
+mkdir lib/modules
+cp -r ${R}/squashfs-root/lib64/modules/${1} lib/modules
+cp -r ${R}/squashfs-root/lib64/modules/${2} lib/modules
 
 # Delete old firmware files for wireless cards (This folder only contains the kernel provided firmware)
 rm -rf lib/firmware
@@ -244,7 +267,7 @@ einfo "Editing the isolinux.cfg and adding '+ ZFS' to the title"
 SRV="$(cat ${H}/isolinux-ori.cfg | grep SYSTEM-RESCUE-CD | cut -d " " -f 4)"
 sed "s/${SRV}/${SRV} + ZFS/" ${H}/isolinux-ori.cfg > ${H}/isolinux-new.cfg
 
-# Adding default root password of "funtoo" to all default options
+# Adding default root password = "root" to all default options
 sed -i "35s/\
 APPEND rescue64 scandelay=1 -- rescue32 scandelay=1/\
 APPEND rescue64 scandelay=1 rootpass=root -- rescue32 \
@@ -265,11 +288,8 @@ mv sysrcd-new.dat sysrcd.dat && md5sum sysrcd.dat > sysrcd.md5
 mv initram-new.igz initram.igz
 mv isolinux-new.cfg isolinux.cfg
 
-if [[ ${KTYPE} -eq 1 ]]; then
-	cp /usr/src/linux-${1}/arch/x86_64/boot/bzImage rescue64
-elif [[ ${KTYPE} -eq 2 ]]; then
-	cp /usr/src/linux-${1}/arch/x86_64/boot/bzImage altker64
-fi
+cp /usr/src/linux-${1}/arch/x86_64/boot/bzImage rescue64
+cp /usr/src/linux-${2}/arch/x86_64/boot/bzImage altker64
 
 clean
 

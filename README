@@ -1,13 +1,13 @@
 This is a script that will extract, modify, and create the files needed 
-in order to replace the sysresccd altker64 kernel with your own custom kernel 
-and include the spl/zfs modules and refresh the dependency list (depmod).
+in order to replace the sysresccd 64 bit kernels with your own custom kernels,
+include the spl/zfs modules, and refresh the dependency list (depmod).
 
 How to use this script?
 
-1. Compile your altker64 (or rescue64 - change KTYPE variable from 2 to 1 in the script) kernel, 
-and compile the spl and zfs modules (On Gentoo/Funtoo: emerge -1 spl zfs-kmod)
+1. Compile your substitute rescue/altker64 bit kernels, 
+and compile the spl and zfs modules (On Gentoo: emerge -1 spl zfs-kmod)
 
-2. Run the 'create.sh' script and pass the name of the kernel directory and the iso. (Example: ./create.sh 3.10.17-alt381-amd64 /root/sysresccd.iso)
+2. Run the 'create.sh' script and pass the name of the kernel directory and the iso. (Example: ./create.sh 3.10.32-std410-amd64 3.13.5-alt410-amd64 /root/sysresccd.iso)
 
 3. Take the files in the 'out' directory and replace the files in their respective locations with an iso editor. I use 'ISO Master'.
 
