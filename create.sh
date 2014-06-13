@@ -188,7 +188,7 @@ einfo "Removing unnecessary files from bliss-initramfs and configuring it for sy
 
 # Remove unncessary directories
 rm -rf bin dev proc sys etc/DIR_COLORS etc/hostid etc/zfs/zpool.cache etc/mtab etc/bash init libraries mnt usr/bin lib/modules
-rm sbin/{depmod,insmod,kmod,lsmod,modinfo,modprobe,rmmod}
+rm sbin/{depmod,insmod,kmod,lsmod,modinfo,modprobe,rmmod} 2> /dev/null
 
 # Copy udev files from live system
 mkdir -p lib/udev/rules.d
