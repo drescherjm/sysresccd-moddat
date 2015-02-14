@@ -1,10 +1,7 @@
 #!/bin/bash
 
 # Copyright 2014-2015 Jonathan Vasquez <jvasquez1011@gmail.com>
-#
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# Licensed under the Simplified BSD License which can be found in the LICENSE file.
 
 # Instructions:
 # ./create.sh <rescue64> <altker64> <path_to_iso>
@@ -55,7 +52,7 @@ eopt()
 # Prints empty line
 eline()
 {
-	echo ""
+    echo ""
 }
 
 
@@ -68,13 +65,13 @@ die()
 # Clean up
 clean()
 {
-	rm -rf ${R} ${SRM} ${IR} ${H}/*-ori*
+    rm -rf ${R} ${SRM} ${IR} ${H}/*-ori*
 }
 
 # ============================================================
 
 if [[ $# != 3 ]] ; then
-	die "./create.sh <rescue64> <altker64> <path_to_iso>. Example: ./create.sh 3.10.32-std410-amd64 3.13.5-std410-amd64 /root/sysresccd.iso"
+    die "./create.sh <rescue64> <altker64> <path_to_iso>. Example: ./create.sh 3.10.32-std410-amd64 3.13.5-std410-amd64 /root/sysresccd.iso"
 fi
 
 # We will make sure we are home (We are already home though since H = pwd)
@@ -84,9 +81,9 @@ cd ${H}
 einfo "Creating temporary directory..."
 
 if [ ! -d "${T}" ]; then
-	mkdir ${T}
+    mkdir ${T}
 else
-	rm -rf ${T} && mkdir ${T}
+    rm -rf ${T} && mkdir ${T}
 fi
 
 einfo "Mounting..."
@@ -104,63 +101,63 @@ einfo "Unmounting..." && umount ${T}
 
 # Check to see if required files exist
 if [ ! -f "sysrcd-ori.dat" ]; then
-	die "The 'sysrcd-ori.dat' file doesn't exist."
+    die "The 'sysrcd-ori.dat' file doesn't exist."
 elif [ ! -f "initram-ori.igz" ]; then
-	die "The 'initram-ori.igz' file doesn't exist."
+    die "The 'initram-ori.igz' file doesn't exist."
 elif [ ! -f "isolinux-ori.cfg" ]; then
-	die "The 'isolinux-ori.cfg' file doesn't exist."
+    die "The 'isolinux-ori.cfg' file doesn't exist."
 fi
 
 # Check to see if the kernel directory exists
 if [ ! -d "/usr/src/linux-${1}" ]; then
-	die "The kernel directory: /usr/src/linux-${1} doesn't exist."
+    die "The kernel directory: /usr/src/linux-${1} doesn't exist."
 fi
 
 if [ ! -d "/usr/src/linux-${2}" ]; then
-	die "The kernel directory: /usr/src/linux-${2} doesn't exist."
+    die "The kernel directory: /usr/src/linux-${2} doesn't exist."
 fi
 
 # Check to see if the kernel modules directory exists
 if [ ! -d "/lib64/modules/${1}" ]; then
-	die "The kernel modules directory: /lib64/modules/${1} doesn't exist."
+    die "The kernel modules directory: /lib64/modules/${1} doesn't exist."
 else
-	if [ ! -d "/lib64/modules/${1}/extra" ]; then
-		die "The kernel modules directory for spl/zfs: /lib64/modules/${1}/extra doesn't exist. Please compile your spl and zfs modules before running the application."
-	fi
+    if [ ! -d "/lib64/modules/${1}/extra" ]; then
+        die "The kernel modules directory for spl/zfs: /lib64/modules/${1}/extra doesn't exist. Please compile your spl and zfs modules before running the application."
+    fi
 fi
 
 if [ ! -d "/lib64/modules/${2}" ]; then
-	die "The kernel modules directory: /lib64/modules/${2} doesn't exist."
+    die "The kernel modules directory: /lib64/modules/${2} doesn't exist."
 else
-	if [ ! -d "/lib64/modules/${2}/extra" ]; then
-		die "The kernel modules directory for spl/zfs: /lib64/modules/${2}/extra doesn't exist. Please compile your spl and zfs modules before running the application."
-	fi
+    if [ ! -d "/lib64/modules/${2}/extra" ]; then
+        die "The kernel modules directory for spl/zfs: /lib64/modules/${2}/extra doesn't exist. Please compile your spl and zfs modules before running the application."
+    fi
 fi
 
 einfo "Creating clean baselayout..."
 
 if [ ! -d "${R}" ]; then
-	mkdir ${R}
+    mkdir ${R}
 else
-	rm -rf ${R} && mkdir ${R}
+    rm -rf ${R} && mkdir ${R}
 fi
 
 if [ ! -d "${IR}" ]; then
-	mkdir ${IR}
+    mkdir ${IR}
 else
-	rm -rf ${IR} && mkdir ${IR}
+    rm -rf ${IR} && mkdir ${IR}
 fi
 
 if [ ! -d "${SRM}" ]; then
-	mkdir ${SRM}
+    mkdir ${SRM}
 else
-	rm -rf ${SRM} && mkdir ${SRM}
+    rm -rf ${SRM} && mkdir ${SRM}
 fi
 
 if [ ! -d ${OUT} ]; then
-	mkdir ${OUT}
+    mkdir ${OUT}
 else
-	rm -rf ${OUT} && mkdir ${OUT}
+    rm -rf ${OUT} && mkdir ${OUT}
 fi
 
 # =========
@@ -200,7 +197,7 @@ einfo "Extracting sysresccd rootfs and installing our modules/userspace applicat
 cd ${R} && unsquashfs ${H}/sysrcd-ori.dat
 
 if [ ! -d "squashfs-root" ]; then
-	die "The 'squashfs-root' directory doesn't exist."
+    die "The 'squashfs-root' directory doesn't exist."
 fi
 
 einfo "Removing old kernel modules and copying new ones..."
