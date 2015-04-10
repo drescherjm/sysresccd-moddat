@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # Copyright 2014-2015 Jonathan Vasquez <jvasquez1011@gmail.com>
-# Licensed under the Simplified BSD License which can be found in the LICENSE file.
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Instructions:
 # ./create.sh <rescue64> <altker64> <path_to_iso>
@@ -11,6 +14,7 @@
 H="$(pwd)"
 SRM="${H}/zfs-srm"
 BIC="/opt/bliss-initramfs"
+BIC_EXE="mkinitrd.py"
 R="${H}/extract"
 IR="${H}/initram"
 OUT="${H}/out"
@@ -71,7 +75,7 @@ clean()
 # ============================================================
 
 if [[ $# != 3 ]] ; then
-    die "./create.sh <rescue64> <altker64> <path_to_iso>. Example: ./create.sh 3.10.32-std410-amd64 3.13.5-std410-amd64 /root/sysresccd.iso"
+    die "./create.sh <rescue64> <altker64> <path_to_iso>. Example: ./create.sh 3.14.35-std452-amd64 3.18.10-alt452-amd64 /root/sysresccd.iso"
 fi
 
 # We will make sure we are home (We are already home though since H = pwd)
@@ -166,7 +170,7 @@ fi
 
 # Generate a bliss-initramfs and extract it in the zfs-srm directory
 
-cd ${BIC} && ./mkinitrd 1 ${1} && mv initrd-${1} ${SRM} && cd ${SRM}
+cd ${BIC} && ./${BIC_EXE} 1 ${1} && mv initrd-${1} ${SRM} && cd ${SRM}
 mv initrd-${1} initrd.gz && cat initrd.gz | gzip -d | cpio -id && rm initrd.gz
 
 # ===========
