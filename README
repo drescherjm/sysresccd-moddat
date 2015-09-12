@@ -11,5 +11,4 @@ and compile the spl and zfs modules (On Gentoo: emerge -1 spl zfs-kmod)
 
 3. Take the files in the 'out' directory and replace the files in their respective locations with an iso editor. I use 'ISO Master'.
 
-You will also need to have bliss-initramfs installed since it uses the initramfs that the application creates as a base for the files needed to be merged into
-the system rescue cd's root filesystem (sysrcd.dat).
+You will also need to have bliss-initramfs installed since it uses the initramfs that the application creates as a base for the files needed to be merged into the system rescue cd's root filesystem (sysrcd.dat).

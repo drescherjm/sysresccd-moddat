@@ -18,7 +18,7 @@ BIC_EXE="mkinitrd.py"
 R="${H}/extract"
 IR="${H}/initram"
 OUT="${H}/out"
-T="/tmp/iso-${RANDOM}"
+T=`mktemp -d`
 
 # Utility Functions
 
@@ -82,18 +82,9 @@ fi
 cd ${H}
 
 # First we will extract the required files from the sysresccd iso
-einfo "Creating temporary directory..."
-
-if [ ! -d "${T}" ]; then
-    mkdir ${T}
-else
-    rm -rf ${T} && mkdir ${T}
-fi
-
 einfo "Mounting..."
 
-modprobe loop || die "Failed to load the 'loop' module. Make sure you have loop support in your kernel."
-mount -o ro,loop ${3} ${T}
+mount -o ro,loop ${3} ${T} || "Failed to loop mount the iso. Make sure you have loop support in your kernel."
 
 einfo "Copying required files..."
 
@@ -102,6 +93,9 @@ cp -f ${T}/isolinux/initram.igz initram-ori.igz
 cp -f ${T}/isolinux/isolinux.cfg isolinux-ori.cfg
 
 einfo "Unmounting..." && umount ${T}
+
+# Remove temporary directory
+rm -rf "${T}"
 
 # Check to see if required files exist
 if [ ! -f "sysrcd-ori.dat" ]; then
@@ -180,15 +174,21 @@ mv initrd-${1} initrd.gz && cat initrd.gz | gzip -d | cpio -id && rm initrd.gz
 einfo "Removing unnecessary files from bliss-initramfs and configuring it for sysresccd use..."
 
 # Remove unncessary directories
-rm -rf bin dev proc sys etc/DIR_COLORS etc/hostid etc/zfs/zpool.cache etc/mtab etc/bash init libraries mnt usr/bin lib/modules
-rm sbin/{depmod,insmod,kmod,lsmod,modinfo,modprobe,rmmod} 2> /dev/null
+rm -rf bin/ dev/ proc/ sys/ root/ run/ mnt/ usr/bin/ etc/ \
+    init libraries/ lib/modules/ lib/udev/
+rm sbin/{depmod,insmod,kmod,lsmod,modinfo,modprobe,rmmod,*udevd} 2> /dev/null
+
+# Make /etc/zfs directory so that the zpool.cache file can be created
+# when the user creates/imports their pool in the iso
+mkdir -p etc/zfs
 
 # Copy udev files from live system
 mkdir -p lib/udev/rules.d
 cp /lib64/udev/rules.d/{60-zvol,69-vdev,90-zfs}.rules lib/udev/rules.d
 cp /lib64/udev/{vdev,zvol}_id lib/udev
 
-# Perform some substitions so that udev uses the correct udev_id file (Needed for making swap zvol - /dev/zvol/<pool name>/<swap dataset name>)
+# Perform some substitions so that udev uses the correct udev_id file
+# (Needed for making swap zvol - /dev/zvol/<pool name>/<swap dataset name>)
 sed -i -e 's:/lib64/:/lib/:' lib/udev/rules.d/69-vdev.rules
 sed -i -e 's:/lib64/:/lib/:' lib/udev/rules.d/60-zvol.rules
 
