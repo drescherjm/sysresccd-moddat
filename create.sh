@@ -92,6 +92,10 @@ if [[ $# != 3 ]] ; then
     die "./create.sh <rescue64> <altker64> <path_to_iso>. Example: ./create.sh 3.14.35-std452-amd64 3.18.10-alt452-amd64 /root/sysresccd.iso"
 fi
 
+if [[ ! -f ${3} ]]; then
+	die "${3} doesn't exist."
+fi
+
 # We will make sure we are home (We are already home though since H = pwd)
 cd ${H}
 
@@ -217,6 +221,11 @@ cd ${R} && unsquashfs ${H}/sysrcd-ori.dat
 if [ ! -d "squashfs-root" ]; then
     die "The 'squashfs-root' directory doesn't exist."
 fi
+
+einfo "Adding and configuring zfs module strings in the iso's /etc/conf.d/modules..."
+
+# Enable the modules service at boot so that our modules will be loaded
+chroot squashfs-root /bin/bash -l -c "rc-update add modules boot"
 
 # Add our zfs modules to load only for these kernel versions
 # This saves the user from having to do a 'modprobe zfs' manually at startup
