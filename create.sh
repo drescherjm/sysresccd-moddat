@@ -25,15 +25,15 @@ T=`mktemp -d`
 # Extracts a complete module string so that we can use it in /etc/conf.d/modules
 extract_module_string()
 {
-	local kernel_version=$(echo $1 | cut -d "-" -f 1)
-	local kernel_version_first=$(echo ${kernel_version} | cut -d "." -f 1)
-	local kernel_version_second=$(echo ${kernel_version} | cut -d "." -f 2)
-	local kernel_version_third=$(echo ${kernel_version} | cut -d "." -f 3)
-	local kernel_label=$(echo $1 | cut -d "-" -f 2)
-	local kernel_arch=$(echo $1 | cut -d "-" -f 3)
-	local module_string="modules_${kernel_version_first}_${kernel_version_second}_${kernel_version_third}_${kernel_label}_${kernel_arch}"
+        local kernel_version=$(echo $1 | cut -d "-" -f 1)
+        local kernel_version_first=$(echo ${kernel_version} | cut -d "." -f 1)
+        local kernel_version_second=$(echo ${kernel_version} | cut -d "." -f 2)
+        local kernel_version_third=$(echo ${kernel_version} | cut -d "." -f 3)
+        local kernel_label=$(echo $1 | cut -d "-" -f 2)
+        local kernel_arch=$(echo $1 | cut -d "-" -f 3)
+        local module_string="modules_${kernel_version_first}_${kernel_version_second}_${kernel_version_third}_${kernel_label}_${kernel_arch}"
 
-	echo "${module_string}"
+        echo "${module_string}"
 }
 
 # Used for displaying information
@@ -83,7 +83,7 @@ die()
 # Clean up
 clean()
 {
-    rm -rf ${R} ${SRM} ${IR} ${H}/*-ori*
+        rm -rf ${R} ${SRM} ${IR} ${H}/*-ori*
 }
 
 # ============================================================
@@ -93,7 +93,7 @@ if [[ $# != 3 ]] ; then
 fi
 
 if [[ ! -f ${3} ]]; then
-	die "${3} doesn't exist."
+    die "${3} doesn't exist."
 fi
 
 # We will make sure we are home (We are already home though since H = pwd)
@@ -256,8 +256,8 @@ mksquashfs squashfs-root/ ${H}/sysrcd-new.dat
 # Now it's time to work on the initram
 # ============
 
-# Switching from GNU cpio to busybox cpio for sysresccd related files 
-# to prevent a module boot error happening on the 32 bit kernels that 
+# Switching from GNU cpio to busybox cpio for sysresccd related files
+# to prevent a module boot error happening on the 32 bit kernels that
 # happens due to the way busybox cpio tries to use the GNU cpio created
 # file at boot time.
 # http://www.sysresccd.org/forums/viewtopic.php?f=25&t=5335
