@@ -22,6 +22,20 @@ T=`mktemp -d`
 
 # Utility Functions
 
+# Extracts a complete module string so that we can use it in /etc/conf.d/modules
+extract_module_string()
+{
+	local kernel_version=$(echo $1 | cut -d "-" -f 1)
+	local kernel_version_first=$(echo ${kernel_version} | cut -d "." -f 1)
+	local kernel_version_second=$(echo ${kernel_version} | cut -d "." -f 2)
+	local kernel_version_third=$(echo ${kernel_version} | cut -d "." -f 3)
+	local kernel_label=$(echo $1 | cut -d "-" -f 2)
+	local kernel_arch=$(echo $1 | cut -d "-" -f 3)
+	local module_string="modules_${kernel_version_first}_${kernel_version_second}_${kernel_version_third}_${kernel_label}_${kernel_arch}"
+
+	echo "${module_string}"
+}
+
 # Used for displaying information
 einfo()
 {
@@ -203,6 +217,11 @@ cd ${R} && unsquashfs ${H}/sysrcd-ori.dat
 if [ ! -d "squashfs-root" ]; then
     die "The 'squashfs-root' directory doesn't exist."
 fi
+
+# Add our zfs modules to load only for these kernel versions
+# This saves the user from having to do a 'modprobe zfs' manually at startup
+echo "$(extract_module_string ${1})=\"zfs\"" >> squashfs-root/etc/conf.d/modules
+echo "$(extract_module_string ${2})=\"zfs\"" >> squashfs-root/etc/conf.d/modules
 
 einfo "Removing old kernel modules and copying new ones..."
 
