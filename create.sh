@@ -224,9 +224,6 @@ fi
 
 einfo "Adding and configuring zfs module strings in the iso's /etc/conf.d/modules..."
 
-# Enable the modules service at boot so that our modules will be loaded
-chroot squashfs-root /bin/bash -l -c "rc-update add modules boot"
-
 # Add our zfs modules to load only for these kernel versions
 # This saves the user from having to do a 'modprobe zfs' manually at startup
 echo "$(extract_module_string ${1})=\"zfs\"" >> squashfs-root/etc/conf.d/modules
@@ -259,8 +256,14 @@ mksquashfs squashfs-root/ ${H}/sysrcd-new.dat
 # Now it's time to work on the initram
 # ============
 
+# Switching from GNU cpio to busybox cpio for sysresccd related files 
+# to prevent a module boot error happening on the 32 bit kernels that 
+# happens due to the way busybox cpio tries to use the GNU cpio created
+# file at boot time.
+# http://www.sysresccd.org/forums/viewtopic.php?f=25&t=5335
+
 einfo "Extracting the sysresccd initramfs and installing our modules into it..."
-cd ${IR} && cat ${H}/initram-ori.igz | xz -d | cpio -id
+cd ${IR} && cat ${H}/initram-ori.igz | xz -d | busybox cpio -id
 
 # Copy the kernel modules to the /lib/modules directory.
 mkdir lib/modules
@@ -275,7 +278,7 @@ cp -r ${R}/squashfs-root/lib/firmware/ lib/firmware
 
 # Remake the initramfs
 ewarn "Creating the new initram.igz. Please wait a moment since this is a single-threaded operation!"
-find . | cpio -H newc -o | xz --check=crc32 --x86 --lzma2 > ${H}/initram-new.igz
+find . | busybox cpio -H newc -o | xz --check=crc32 --x86 --lzma2 > ${H}/initram-new.igz
 
 # =========
 # Edit the isolinux.cfg to it has + ZFS in its name
