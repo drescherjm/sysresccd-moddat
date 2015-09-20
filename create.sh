@@ -88,12 +88,15 @@ clean()
 
 # ============================================================
 
-if [[ $# != 3 ]] ; then
-    die "./create.sh <rescue64> <altker64> <path_to_iso>. Example: ./create.sh 3.14.35-std452-amd64 3.18.10-alt452-amd64 /root/sysresccd.iso"
+if [[ $# != 4 ]] ; then
+    die "./create.sh <rescue64> <altker64> <zfs_version> <path_to_iso>. Example: ./create.sh 3.14.35-std452-amd64 3.18.10-alt452-amd64 0.6.5.1 /root/sysresccd.iso"
 fi
 
-if [[ ! -f ${3} ]]; then
-    die "${3} doesn't exist."
+ZFS_VERSION="${3}"
+ISO_PATH="${4}"
+
+if [[ ! -f "${ISO_PATH}" ]]; then
+    die "${ISO_PATH} doesn't exist."
 fi
 
 # We will make sure we are home (We are already home though since H = pwd)
@@ -102,7 +105,7 @@ cd ${H}
 # First we will extract the required files from the sysresccd iso
 einfo "Mounting..."
 
-mount -o ro,loop ${3} ${T} || "Failed to loop mount the iso. Make sure you have loop support in your kernel."
+mount -o ro,loop ${ISO_PATH} ${T} || "Failed to loop mount the iso. Make sure you have loop support in your kernel."
 
 einfo "Copying required files..."
 
@@ -278,7 +281,7 @@ cp -r ${R}/squashfs-root/lib/firmware/ lib/firmware
 
 # Remake the initramfs
 ewarn "Creating the new initram.igz. Please wait a moment since this is a single-threaded operation!"
-find . | busybox cpio -H newc -o | xz --check=crc32 --x86 --lzma2 > ${H}/initram-new.igz
+find . | busybox cpio -H newc -o | gzip -9 > ${H}/initram-new.igz
 
 # =========
 # Edit the isolinux.cfg to it has + ZFS in its name
@@ -289,7 +292,7 @@ einfo "Editing the isolinux.cfg and adding '+ ZFS' to the title"
 # Add "+ ZFS" after the version in the title to distinguish
 # it from original disks
 SRV="$(cat ${H}/isolinux-ori.cfg | grep SYSTEM-RESCUE-CD | cut -d " " -f 4)"
-sed "s/${SRV}/${SRV} + ZFS/" ${H}/isolinux-ori.cfg > ${H}/isolinux-new.cfg
+sed "s/${SRV}/${SRV} + ZFS ${ZFS_VERSION}/" ${H}/isolinux-ori.cfg > ${H}/isolinux-new.cfg
 
 einfo "Renaming other files and making sure all necessary files are in the out/ directory ..."
 
