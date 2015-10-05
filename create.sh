@@ -333,13 +333,16 @@ cp sysrcd.* "${ISO_PATH_NEW_DIR}"
 cp initram.igz isolinux.cfg *64 "${ISO_PATH_NEW_DIR}/isolinux/"
 
 # Removing 32 bit kernel options from isolinux dir
-rm -v "${ISO_PATH_NEW_DIR}"/isolinux/{rescue32,altker32}
+rm "${ISO_PATH_NEW_DIR}"/isolinux/{rescue32,altker32}
+
+# Remove the 32 bit kernel from the usb_inst.sh script's required files
+sed -i -e "s:'???linux/rescue32'::g" "${ISO_PATH_NEW_DIR}"/usb_inst.sh
 
 create_iso
 
 # Unmount and clean up
 einfo "Unmounting..." && umount ${T}
 
-#clean
+clean
 
 einfo "Complete"
