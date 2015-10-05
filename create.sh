@@ -19,6 +19,9 @@ R="${H}/extract"
 IR="${H}/initram"
 OUT="${H}/out"
 T=`mktemp -d`
+VOLUME_ID_NAME="sysresccd_zfs"
+ISO_PATH_NEW_OUT="${H}/sysresccd.iso"
+ISO_PATH_NEW_DIR=`mktemp -d`
 
 # Utility Functions
 
@@ -34,6 +37,17 @@ extract_module_string()
         local module_string="modules_${kernel_version_first}_${kernel_version_second}_${kernel_version_third}_${kernel_label}_${kernel_arch}"
 
         echo "${module_string}"
+}
+
+# Makes the iso
+create_iso()
+{
+	xorriso -as mkisofs -joliet -rock \
+			-omit-version-number -disable-deep-relocation \
+			-b isolinux/isolinux.bin -c isolinux/boot.cat \
+			-no-emul-boot -boot-load-size 4 -boot-info-table \
+			-eltorito-alt-boot -e boot/grub/efi.img -no-emul-boot \
+			-volid "${VOLUME_ID_NAME}" -o "${ISO_PATH_NEW_OUT}" "${ISO_PATH_NEW_DIR}"
 }
 
 # Used for displaying information
@@ -83,7 +97,7 @@ die()
 # Clean up
 clean()
 {
-        rm -rf ${R} ${SRM} ${IR} ${H}/*-ori*
+        rm -rf "${R}" "${SRM}" "${IR}" "${H}"/*-ori* "${OUT}" "${T}" "${ISO_PATH_NEW_DIR}"
 }
 
 # ============================================================
@@ -113,10 +127,6 @@ cp -f ${T}/sysrcd.dat sysrcd-ori.dat
 cp -f ${T}/isolinux/initram.igz initram-ori.igz
 cp -f ${T}/isolinux/isolinux.cfg isolinux-ori.cfg
 
-einfo "Unmounting..." && umount ${T}
-
-# Remove temporary directory
-rm -rf "${T}"
 
 # Check to see if required files exist
 if [ ! -f "sysrcd-ori.dat" ]; then
@@ -242,6 +252,10 @@ rm -rf squashfs-root/lib64/modules/${2}
 cp -r /lib64/modules/${1} squashfs-root/lib64/modules/
 cp -r /lib64/modules/${2} squashfs-root/lib64/modules/
 
+# Remove 32 bit modules. Killing 32 bit support for these discs. They are just causing problems
+# and I don't use them. If other people use them, they can use another iso. Only 64 bit will be supported.
+rm -rfv squashfs-root/lib/modules/*-i586
+
 einfo "Regenerating module dependencies from within the sysresccd rootfs..."
 
 # Regenerate module dependencies for the kernel from within the sysresccd rootfs
@@ -259,14 +273,8 @@ mksquashfs squashfs-root/ ${H}/sysrcd-new.dat
 # Now it's time to work on the initram
 # ============
 
-# Switching from GNU cpio to busybox cpio for sysresccd related files
-# to prevent a module boot error happening on the 32 bit kernels that
-# happens due to the way busybox cpio tries to use the GNU cpio created
-# file at boot time.
-# http://www.sysresccd.org/forums/viewtopic.php?f=25&t=5335
-
 einfo "Extracting the sysresccd initramfs and installing our modules into it..."
-cd ${IR} && cat ${H}/initram-ori.igz | xz -d | busybox cpio -id
+cd ${IR} && cat ${H}/initram-ori.igz | xz -d | cpio -id
 
 # Copy the kernel modules to the /lib/modules directory.
 mkdir lib/modules
@@ -279,9 +287,18 @@ rm -rf lib/firmware
 # Copy the firmware files for wireless cards (This includes support for all wireless cards - linux-firmware)
 cp -r ${R}/squashfs-root/lib/firmware/ lib/firmware
 
+# 32 bit option booting is completely broken because something related to the
+# initramfs created here. Switching to busybox cpio did not fix it.
+# Maybe someone can figure it out. It seems to be non-deterministic. Sometimes the
+# generated isos work, sometimes they don't, but it's definitely do to the initramfs
+# created at this point. I really don't care about 32 bit though so I'm not going
+# to let that hold back the 64 bit releases (Which everything works on).
+
+# http://www.sysresccd.org/forums/viewtopic.php?f=25&t=5335
+
 # Remake the initramfs
 ewarn "Creating the new initram.igz. Please wait a moment since this is a single-threaded operation!"
-find . | busybox cpio -H newc -o | gzip -9 > ${H}/initram-new.igz
+find . | cpio -H newc -o | xz --check=crc32 --x86 --lzma2 > ${H}/initram-new.igz
 
 # =========
 # Edit the isolinux.cfg to it has + ZFS in its name
@@ -307,6 +324,22 @@ mv isolinux-new.cfg isolinux.cfg
 cp /usr/src/linux-${1}/arch/x86_64/boot/bzImage rescue64
 cp /usr/src/linux-${2}/arch/x86_64/boot/bzImage altker64
 
-clean
+# Generate new iso
+einfo "Copying files for new iso ..."
+cp -a "${T}"/* "${ISO_PATH_NEW_DIR}"
+
+einfo "Modifying and generating iso ..."
+cp sysrcd.* "${ISO_PATH_NEW_DIR}"
+cp initram.igz isolinux.cfg *64 "${ISO_PATH_NEW_DIR}/isolinux/"
+
+# Removing 32 bit kernel options from isolinux dir
+rm -v "${ISO_PATH_NEW_DIR}"/isolinux/{rescue32,altker32}
+
+create_iso
+
+# Unmount and clean up
+einfo "Unmounting..." && umount ${T}
+
+#clean
 
 einfo "Complete"
