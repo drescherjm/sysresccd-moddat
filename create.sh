@@ -254,7 +254,7 @@ cp -r /lib64/modules/${2} squashfs-root/lib64/modules/
 
 # Remove 32 bit modules. Killing 32 bit support for these discs. They are just causing problems
 # and I don't use them. If other people use them, they can use another iso. Only 64 bit will be supported.
-rm -rfv squashfs-root/lib/modules/*-i586
+rm -rf squashfs-root/lib/modules/*-i586
 
 einfo "Regenerating module dependencies from within the sysresccd rootfs..."
 
