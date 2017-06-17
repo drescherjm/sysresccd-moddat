@@ -24,7 +24,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Instructions:
-# ./create.sh <rescue64> <altker64> <path_to_iso>
+# ./create.sh <rescue64> <zfs version to display in menu> <path_to_iso>
 
 # Your files will be located in the out/ directory.
 
@@ -39,6 +39,8 @@ T=`mktemp -d`
 VOLUME_ID_NAME="sysresccd_zfs"
 ISO_PATH_NEW_OUT="${H}/sysresccd.iso"
 ISO_PATH_NEW_DIR=`mktemp -d`
+MENU_FILE_NAME="${H}/isolinux-ori.cfg"
+MENU_FILE_NAME_NEW="${H}/isolinux-new.cfg"
 
 # Utility Functions
 
@@ -117,14 +119,38 @@ clean()
         rm -rf "${R}" "${SRM}" "${IR}" "${H}"/*-ori* "${OUT}" "${T}" "${ISO_PATH_NEW_DIR}"
 }
 
+# Remove 32 bit kernel entry
+# Add +ZFS to title
+update_menu()
+{
+	# We really just want to delete the line before the match and everything from the match
+	# till the end of the line. But seems complicated and confusing when just using sed.
+
+	# get line number
+	local standard32Text="Standard 32bit kernel"
+	local endText="MENU END"
+	local matchLineNumber=$(grep -n "${standard32Text}" "${MENU_FILE_NAME}" | cut -d ":" -f 1)
+	local lineBegin="$(echo "${matchLineNumber} - 4" | bc)"
+	local lineEnd="$(echo "${matchLineNumber} - 1" | bc)"
+	local MENU_FILE_NAME_TEMP="${MENU_FILE_NAME_NEW}.tmp"
+
+	# Delete lines before the match (to make it pretty) and then delete the menu section
+	cat ${MENU_FILE_NAME} | sed "${lineBegin},${lineEnd}d" | sed "/${standard32Text}/,/${endText}/d" > ${MENU_FILE_NAME_TEMP}
+
+	# Add "+ ZFS" after the version in the title to distinguish it from original disks
+	local titleText="SYSTEM-RESCUE-CD"
+	SRV="$(cat ${MENU_FILE_NAME_TEMP} | grep ${titleText} | cut -d " " -f 4)"
+	cat ${MENU_FILE_NAME_TEMP} | sed "s/${SRV}.*/${SRV} + ZFS ${ZFS_VERSION}/" > ${MENU_FILE_NAME_NEW}
+}
+
 # ============================================================
 
-if [[ $# != 4 ]] ; then
-    die "./create.sh <rescue64> <altker64> <zfs_version> <path_to_iso>. Example: ./create.sh 3.14.35-std452-amd64 3.18.10-alt452-amd64 0.6.5.1 /root/sysresccd.iso"
+if [[ $# != 3 ]] ; then
+    die "./create.sh <rescue64> <zfs_version> <path_to_iso>. Example: ./create.sh 4.9.30-std502-amd64 0.6.5.10 /root/sysresccd.iso"
 fi
 
-ZFS_VERSION="${3}"
-ISO_PATH="${4}"
+ZFS_VERSION="${2}"
+ISO_PATH="${3}"
 
 if [[ ! -f "${ISO_PATH}" ]]; then
     die "${ISO_PATH} doesn't exist."
@@ -144,7 +170,6 @@ cp -f ${T}/sysrcd.dat sysrcd-ori.dat
 cp -f ${T}/isolinux/initram.igz initram-ori.igz
 cp -f ${T}/isolinux/isolinux.cfg isolinux-ori.cfg
 
-
 # Check to see if required files exist
 if [ ! -f "sysrcd-ori.dat" ]; then
     die "The 'sysrcd-ori.dat' file doesn't exist."
@@ -159,24 +184,12 @@ if [ ! -d "/usr/src/linux-${1}" ]; then
     die "The kernel directory: /usr/src/linux-${1} doesn't exist."
 fi
 
-if [ ! -d "/usr/src/linux-${2}" ]; then
-    die "The kernel directory: /usr/src/linux-${2} doesn't exist."
-fi
-
 # Check to see if the kernel modules directory exists
 if [ ! -d "/lib64/modules/${1}" ]; then
     die "The kernel modules directory: /lib64/modules/${1} doesn't exist."
 else
     if [ ! -d "/lib64/modules/${1}/extra" ]; then
         die "The kernel modules directory for spl/zfs: /lib64/modules/${1}/extra doesn't exist. Please compile your spl and zfs modules before running the application."
-    fi
-fi
-
-if [ ! -d "/lib64/modules/${2}" ]; then
-    die "The kernel modules directory: /lib64/modules/${2} doesn't exist."
-else
-    if [ ! -d "/lib64/modules/${2}/extra" ]; then
-        die "The kernel modules directory for spl/zfs: /lib64/modules/${2}/extra doesn't exist. Please compile your spl and zfs modules before running the application."
     fi
 fi
 
@@ -212,7 +225,7 @@ fi
 
 # Generate a bliss-initramfs and extract it in the zfs-srm directory
 
-cd ${BIC} && ./${BIC_EXE} 1 ${1} && mv initrd-${1} ${SRM} && cd ${SRM}
+cd ${BIC} && ./${BIC_EXE} zfs ${1} && mv initrd-${1} ${SRM} && cd ${SRM}
 mv initrd-${1} initrd.gz && cat initrd.gz | gzip -d | cpio -id && rm initrd.gz
 
 # ===========
@@ -257,17 +270,14 @@ einfo "Adding and configuring zfs module strings in the iso's /etc/conf.d/module
 # Add our zfs modules to load only for these kernel versions
 # This saves the user from having to do a 'modprobe zfs' manually at startup
 echo "$(extract_module_string ${1})=\"zfs\"" >> squashfs-root/etc/conf.d/modules
-echo "$(extract_module_string ${2})=\"zfs\"" >> squashfs-root/etc/conf.d/modules
 
 einfo "Removing old kernel modules and copying new ones..."
 
 # Remove the old sysresccd 64 bit kernel modules since we will be replacing them
 rm -rf squashfs-root/lib64/modules/${1}
-rm -rf squashfs-root/lib64/modules/${2}
 
 # Copy the spl/zfs modules into the squashfs image (sysresccd rootfs)
 cp -r /lib64/modules/${1} squashfs-root/lib64/modules/
-cp -r /lib64/modules/${2} squashfs-root/lib64/modules/
 
 # Remove 32 bit modules. Killing 32 bit support for these discs. They are just causing problems
 # and I don't use them. If other people use them, they can use another iso. Only 64 bit will be supported.
@@ -277,7 +287,6 @@ einfo "Regenerating module dependencies from within the sysresccd rootfs..."
 
 # Regenerate module dependencies for the kernel from within the sysresccd rootfs
 chroot squashfs-root /bin/bash -l -c "depmod ${1}" 2> /dev/null
-chroot squashfs-root /bin/bash -l -c "depmod ${2}" 2> /dev/null
 
 # Merge zfs-srm folder with this folder
 einfo "Installing zfs userspace applications and files into the sysresccd rootfs..."
@@ -296,7 +305,6 @@ cd ${IR} && cat ${H}/initram-ori.igz | xz -d | cpio -id
 # Copy the kernel modules to the /lib/modules directory.
 mkdir lib/modules
 cp -r ${R}/squashfs-root/lib64/modules/${1} lib/modules
-cp -r ${R}/squashfs-root/lib64/modules/${2} lib/modules
 
 # Delete old firmware files for wireless cards (This folder only contains the kernel provided firmware)
 rm -rf lib/firmware
@@ -318,15 +326,11 @@ ewarn "Creating the new initram.igz. Please wait a moment since this is a single
 find . | cpio -H newc -o | xz --check=crc32 --x86 --lzma2 > ${H}/initram-new.igz
 
 # =========
-# Edit the isolinux.cfg to it has + ZFS in its name
+# Edit the isolinux.cfg (remove 32 bit entry and add + ZFS)
 # =========
 
-einfo "Editing the isolinux.cfg and adding '+ ZFS' to the title"
-
-# Add "+ ZFS" after the version in the title to distinguish
-# it from original disks
-SRV="$(cat ${H}/isolinux-ori.cfg | grep SYSTEM-RESCUE-CD | cut -d " " -f 4)"
-sed "s/${SRV}/${SRV} + ZFS ${ZFS_VERSION}/" ${H}/isolinux-ori.cfg > ${H}/isolinux-new.cfg
+einfo "Editing the isolinux.cfg [Removing 32 bit menu entry and adding '+ ZFS' to the title]"
+update_menu
 
 einfo "Renaming other files and making sure all necessary files are in the out/ directory ..."
 
@@ -339,7 +343,6 @@ mv initram-new.igz initram.igz
 mv isolinux-new.cfg isolinux.cfg
 
 cp /usr/src/linux-${1}/arch/x86_64/boot/bzImage rescue64
-cp /usr/src/linux-${2}/arch/x86_64/boot/bzImage altker64
 
 # Generate new iso
 einfo "Copying files for new iso ..."
@@ -349,8 +352,8 @@ einfo "Modifying and generating iso ..."
 cp sysrcd.* "${ISO_PATH_NEW_DIR}"
 cp initram.igz isolinux.cfg *64 "${ISO_PATH_NEW_DIR}/isolinux/"
 
-# Removing 32 bit kernel options from isolinux dir
-rm "${ISO_PATH_NEW_DIR}"/isolinux/{rescue32,altker32}
+# Removing 32 bit kernel option from isolinux dir
+rm "${ISO_PATH_NEW_DIR}"/isolinux/rescue32
 
 # Remove the 32 bit kernel from the usb_inst.sh script's required files
 sed -i -e "s:'???linux/rescue32'::g" "${ISO_PATH_NEW_DIR}"/usb_inst.sh
