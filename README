@@ -15,7 +15,7 @@ You will also need to have bliss-initramfs installed since it uses the initramfs
 
 Dependencies
 ============
-- xorriso
-- bliss-initramfs
+- xorriso (now in dev-libs/libisoburn)
+- bliss-initramfs 
 - zfs
 - busybox
